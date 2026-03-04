@@ -5,9 +5,11 @@ using System.Windows.Input;
 using System.IO;
 using System.Windows;
 using System.Windows.Threading;
+using System.Windows.Data;
+using System.Linq;
 
 namespace CarRent
-{  
+{
     public partial class MainWindow : Window
     {
         public MainWindow()
@@ -27,6 +29,9 @@ namespace CarRent
         private int _pendingReviewStars;
         private RentalReviewContext _pendingReview;
         private int _nextRentalId;
+        private string _selectedClassFilter;
+        private double _maxPriceFilter;
+        private double _minRatingFilter;
 
         public MainViewModel()
         {
@@ -46,6 +51,20 @@ namespace CarRent
                 new CarViewModel("Chery Tiggo 7", "Кроссовер", 11, 73, "3 мин пешком · ул. Университетская", 4.6, 60, "chery_tiggo_7.jpg")
             };
 
+            FilteredCars = CollectionViewSource.GetDefaultView(Cars);
+            FilteredCars.Filter = FilterCars;
+
+            AvailableClasses = new ObservableCollection<string> { "Все классы" };
+            foreach (var classTag in Cars.Select(car => car.ClassTag).Distinct().OrderBy(tag => tag))
+            {
+                AvailableClasses.Add(classTag);
+            }
+
+            MaxPriceLimit = Cars.Max(car => (double)car.PricePerMinute);
+            _selectedClassFilter = "Все классы";
+            _maxPriceFilter = MaxPriceLimit;
+            _minRatingFilter = 0;
+
             SelectCarCommand = new RelayCommand(SelectCar);
             ReserveCommand = new RelayCommand(_ => Reserve());
             StartEngineCommand = new RelayCommand(_ => StartEngine());
@@ -53,6 +72,7 @@ namespace CarRent
             FinishAndPayCommand = new RelayCommand(_ => FinishAndPay());
             SetReviewStarsCommand = new RelayCommand(SetReviewStars);
             SubmitReviewCommand = new RelayCommand(_ => SubmitReview());
+            ResetFiltersCommand = new RelayCommand(_ => ResetFilters());
 
             _timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
             _timer.Tick += (_, __) => OnTick();
@@ -67,6 +87,8 @@ namespace CarRent
         public event PropertyChangedEventHandler PropertyChanged;
 
         public ObservableCollection<CarViewModel> Cars { get; }
+        public ICollectionView FilteredCars { get; }
+        public ObservableCollection<string> AvailableClasses { get; }
 
         public ICommand SelectCarCommand { get; }
         public ICommand ReserveCommand { get; }
@@ -75,6 +97,67 @@ namespace CarRent
         public ICommand FinishAndPayCommand { get; }
         public ICommand SetReviewStarsCommand { get; }
         public ICommand SubmitReviewCommand { get; }
+        public ICommand ResetFiltersCommand { get; }
+
+        public double MaxPriceLimit { get; }
+
+        public string SelectedClassFilter
+        {
+            get => _selectedClassFilter;
+            set
+            {
+                if (_selectedClassFilter == value)
+                {
+                    return;
+                }
+
+                _selectedClassFilter = value;
+                OnPropertyChanged(nameof(SelectedClassFilter));
+                RefreshFilters();
+            }
+        }
+
+        public double MaxPriceFilter
+        {
+            get => _maxPriceFilter;
+            set
+            {
+                var bounded = Math.Max(0, Math.Min(MaxPriceLimit, value));
+                if (_maxPriceFilter == bounded)
+                {
+                    return;
+                }
+
+                _maxPriceFilter = bounded;
+                OnPropertyChanged(nameof(MaxPriceFilter));
+                OnPropertyChanged(nameof(MaxPriceFilterText));
+                RefreshFilters();
+            }
+        }
+
+        public double MinRatingFilter
+        {
+            get => _minRatingFilter;
+            set
+            {
+                var bounded = Math.Max(0, Math.Min(5, Math.Round(value, 1)));
+                if (Math.Abs(_minRatingFilter - bounded) < 0.001)
+                {
+                    return;
+                }
+
+                _minRatingFilter = bounded;
+                OnPropertyChanged(nameof(MinRatingFilter));
+                OnPropertyChanged(nameof(MinRatingFilterText));
+                RefreshFilters();
+            }
+        }
+
+        public string MaxPriceFilterText => $"до {(int)MaxPriceFilter} ₽/мин";
+
+        public string MinRatingFilterText => $"от {MinRatingFilter:0.0}★";
+
+        public string FiltersSummary => $"Класс: {SelectedClassFilter}, цена: {MaxPriceFilterText}, рейтинг: {MinRatingFilterText}";
 
         public string SelectedCarName => _selectedCar == null
             ? "Машина не выбрана"
@@ -138,17 +221,48 @@ namespace CarRent
                 ? "За последнюю завершенную аренду отзыв уже отправлен."
                 : $"Доступен отзыв за аренду №{_pendingReview.RentalId}: {_pendingReview.Car.Name}.";
 
-        public string SelectedCarImagePath => _selectedCar == null
-            ? null
-            : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, _selectedCar.ImageRelativePath);
+        public string SelectedCarImagePath => _selectedCar?.ImagePath;
 
         public string SelectedCarImageStatusText => _selectedCar == null
             ? "Выберите машину, чтобы увидеть фото."
-            : $"Фото: {_selectedCar.ImageFileName} (папка Assets/CarPhotos).";
-
+                : _selectedCar.HasImageFile
+                ? ""
+                : $"Фото не найдено: {_selectedCar.ImageRelativePath}. Проверьте копирование файлов в bin.";
         public string ReceiptText { get; private set; }
 
         private bool HasActiveTrip => _state == TripState.Booked || _state == TripState.EngineStarted || _state == TripState.Riding;
+
+        private bool FilterCars(object item)
+        {
+            if (!(item is CarViewModel car))
+            {
+                return false;
+            }
+
+            var classMatches = SelectedClassFilter == "Все классы" || car.ClassTag == SelectedClassFilter;
+            var priceMatches = (double)car.PricePerMinute <= MaxPriceFilter;
+            var ratingMatches = car.Rating >= MinRatingFilter;
+            return classMatches && priceMatches && ratingMatches;
+        }
+
+        private void RefreshFilters()
+        {
+            FilteredCars.Refresh();
+            OnPropertyChanged(nameof(FiltersSummary));
+        }
+
+        private void ResetFilters()
+        {
+            _selectedClassFilter = "Все классы";
+            _maxPriceFilter = MaxPriceLimit;
+            _minRatingFilter = 0;
+            OnPropertyChanged(nameof(SelectedClassFilter));
+            OnPropertyChanged(nameof(MaxPriceFilter));
+            OnPropertyChanged(nameof(MinRatingFilter));
+            OnPropertyChanged(nameof(MaxPriceFilterText));
+            OnPropertyChanged(nameof(MinRatingFilterText));
+            RefreshFilters();
+        }
 
         private void SelectCar(object parameter)
         {
@@ -379,6 +493,7 @@ namespace CarRent
             OnPropertyChanged(nameof(SelectedCarImageStatusText));
             OnPropertyChanged(nameof(ReceiptText));
             OnPropertyChanged(nameof(HeaderStatus));
+            OnPropertyChanged(nameof(FiltersSummary));
             CommandManager.InvalidateRequerySuggested();
         }
 
@@ -414,6 +529,8 @@ namespace CarRent
         public string Location { get; }
         public string ImageFileName { get; }
         public string ImageRelativePath => Path.Combine("Assets", "CarPhotos", ImageFileName);
+        public string ImagePath => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ImageRelativePath);
+        public bool HasImageFile => File.Exists(ImagePath);
 
         public double Rating => _rating;
         public int ReviewsCount => _reviewsCount;

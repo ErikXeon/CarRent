@@ -36,23 +36,24 @@ namespace CarRent
         private TimeSpan _bookingLeft;
         private DateTime? _rideStart;
         private decimal _total;
+        private int _pendingReviewStars;
 
         public MainViewModel()
         {
             Cars = new ObservableCollection<CarViewModel>
             {
-                new CarViewModel("Tesla Model 3", "Электро", 14, 96, "2 мин пешком · ул. Победы, 8", 4.9),
-                new CarViewModel("Volkswagen Polo", "Комфорт", 9, 62, "5 мин пешком · пр-т Мира, 15", 4.7),
-                new CarViewModel("Haval Jolion", "Кроссовер", 12, 74, "3 мин пешком · ТЦ Центральный", 4.8),
-                new CarViewModel("Kia Rio X", "Город", 8, 58, "6 мин пешком · ул. Ленина, 42", 4.6),
-                new CarViewModel("BMW i3", "Премиум", 17, 88, "4 мин пешком · Набережная", 4.9),
-                new CarViewModel("Geely Coolray", "Спорт", 11, 67, "7 мин пешком · ул. Гагарина, 2", 4.5),
-                new CarViewModel("Hyundai Solaris", "Город", 8, 71, "5 мин пешком · БЦ Альфа", 4.6),
-                new CarViewModel("Nissan Qashqai", "Кроссовер", 12, 65, "8 мин пешком · ул. Советская, 4", 4.7),
-                new CarViewModel("Audi A3", "Премиум", 16, 81, "4 мин пешком · Парк Сити", 4.8),
-                new CarViewModel("Renault Kaptur", "Семейный", 10, 69, "6 мин пешком · ул. Молодежная, 17", 4.5),
-                new CarViewModel("Exeed LX", "Бизнес", 15, 76, "9 мин пешком · ЖК Панорама", 4.7),
-                new CarViewModel("Chery Tiggo 7", "Кроссовер", 11, 73, "3 мин пешком · ул. Университетская", 4.6)
+                new CarViewModel("Tesla Model 3", "Электро", 14, 96, "2 мин пешком · ул. Победы, 8", 4.9, 120),
+                new CarViewModel("Volkswagen Polo", "Комфорт", 9, 62, "5 мин пешком · пр-т Мира, 15", 4.7, 88),
+                new CarViewModel("Haval Jolion", "Кроссовер", 12, 74, "3 мин пешком · ТЦ Центральный", 4.8, 57),
+                new CarViewModel("Kia Rio X", "Город", 8, 58, "6 мин пешком · ул. Ленина, 42", 4.6, 102),
+                new CarViewModel("BMW i3", "Премиум", 17, 88, "4 мин пешком · Набережная", 4.9, 41),
+                new CarViewModel("Geely Coolray", "Спорт", 11, 67, "7 мин пешком · ул. Гагарина, 2", 4.5, 64),
+                new CarViewModel("Hyundai Solaris", "Город", 8, 71, "5 мин пешком · БЦ Альфа", 4.6, 95),
+                new CarViewModel("Nissan Qashqai", "Кроссовер", 12, 65, "8 мин пешком · ул. Советская, 4", 4.7, 53),
+                new CarViewModel("Audi A3", "Премиум", 16, 81, "4 мин пешком · Парк Сити", 4.8, 37),
+                new CarViewModel("Renault Kaptur", "Семейный", 10, 69, "6 мин пешком · ул. Молодежная, 17", 4.5, 72),
+                new CarViewModel("Exeed LX", "Бизнес", 15, 76, "9 мин пешком · ЖК Панорама", 4.7, 48),
+                new CarViewModel("Chery Tiggo 7", "Кроссовер", 11, 73, "3 мин пешком · ул. Университетская", 4.6, 60)
             };
 
             SelectCarCommand = new RelayCommand(SelectCar);
@@ -60,11 +61,14 @@ namespace CarRent
             StartEngineCommand = new RelayCommand(_ => StartEngine());
             StartRideCommand = new RelayCommand(_ => StartRide());
             FinishAndPayCommand = new RelayCommand(_ => FinishAndPay());
+            SetReviewStarsCommand = new RelayCommand(SetReviewStars);
+            SubmitReviewCommand = new RelayCommand(_ => SubmitReview());
 
             _timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
             _timer.Tick += (_, __) => OnTick();
 
             _state = TripState.NoSelection;
+            _pendingReviewStars = 5;
             ReceiptText = "Выбери машину, чтобы начать аренду.";
             RaiseAll();
         }
@@ -78,6 +82,8 @@ namespace CarRent
         public ICommand StartEngineCommand { get; }
         public ICommand StartRideCommand { get; }
         public ICommand FinishAndPayCommand { get; }
+        public ICommand SetReviewStarsCommand { get; }
+        public ICommand SubmitReviewCommand { get; }
 
         public string SelectedCarName => _selectedCar == null
             ? "Машина не выбрана"
@@ -133,6 +139,8 @@ namespace CarRent
             ? "Сначала выбери автомобиль."
             : $"Тариф {_selectedCar.PricePerMinute} ₽/мин.";
 
+        public string PendingReviewText => $"Выбрано: {_pendingReviewStars} из 5 звезд";
+
         public string ReceiptText { get; private set; }
 
         private bool HasActiveTrip => _state == TripState.Booked || _state == TripState.EngineStarted || _state == TripState.Riding;
@@ -157,6 +165,7 @@ namespace CarRent
             _bookingLeft = TimeSpan.Zero;
             _rideStart = null;
             _total = 0;
+            _pendingReviewStars = 5;
             ReceiptText = $"{car.Name} выбран. Можно сразу начать аренду или сначала забронировать на 15 минут.";
             RaiseAll();
         }
@@ -170,9 +179,9 @@ namespace CarRent
                 return;
             }
 
-            if (_state == TripState.Riding)
+            if (HasActiveTrip && _state != TripState.Ready)
             {
-                ReceiptText = "Нельзя забронировать во время активной аренды.";
+                ReceiptText = "Другая машина уже забронирована или в аренде. Сначала завершите текущую поездку.";
                 RaiseAll();
                 return;
             }
@@ -228,11 +237,6 @@ namespace CarRent
                 return;
             }
 
-            if (_state == TripState.NoSelection || _state == TripState.Finished)
-            {
-                _state = TripState.Ready;
-            }
-
             _state = TripState.Riding;
             _rideStart = DateTime.Now;
             _total = 0;
@@ -274,6 +278,36 @@ namespace CarRent
             RaiseAll();
         }
 
+        private void SetReviewStars(object parameter)
+        {
+            if (parameter == null)
+            {
+                return;
+            }
+
+            if (!int.TryParse(parameter.ToString(), out var stars))
+            {
+                return;
+            }
+
+            _pendingReviewStars = Math.Max(1, Math.Min(5, stars));
+            RaiseAll();
+        }
+
+        private void SubmitReview()
+        {
+            if (_selectedCar == null)
+            {
+                ReceiptText = "Сначала выберите машину, чтобы оставить отзыв.";
+                RaiseAll();
+                return;
+            }
+
+            _selectedCar.AddReview(_pendingReviewStars);
+            ReceiptText = $"Отзыв отправлен: {_pendingReviewStars}★. Новый рейтинг {_selectedCar.RatingText}.";
+            RaiseAll();
+        }
+
         private void OnTick()
         {
             if ((_state == TripState.Booked || _state == TripState.EngineStarted) && _bookingLeft > TimeSpan.Zero)
@@ -303,6 +337,7 @@ namespace CarRent
             OnPropertyChanged(nameof(TimerText));
             OnPropertyChanged(nameof(RunningTotalText));
             OnPropertyChanged(nameof(BillingHint));
+            OnPropertyChanged(nameof(PendingReviewText));
             OnPropertyChanged(nameof(ReceiptText));
             OnPropertyChanged(nameof(HeaderStatus));
             CommandManager.InvalidateRequerySuggested();
@@ -314,28 +349,53 @@ namespace CarRent
         }
     }
 
-    public class CarViewModel
+    public class CarViewModel : INotifyPropertyChanged
     {
-        public CarViewModel(string name, string classTag, decimal pricePerMinute, int batteryPercent, string location, double rating)
+        private double _rating;
+        private int _reviewsCount;
+
+        public CarViewModel(string name, string classTag, decimal pricePerMinute, int batteryPercent, string location, double rating, int reviewsCount)
         {
             Name = name;
             ClassTag = classTag;
             PricePerMinute = pricePerMinute;
             BatteryPercent = batteryPercent;
             Location = location;
-            Rating = rating;
+            _rating = rating;
+            _reviewsCount = reviewsCount;
         }
+
+        public event PropertyChangedEventHandler PropertyChanged;
 
         public string Name { get; }
         public string ClassTag { get; }
         public decimal PricePerMinute { get; }
         public int BatteryPercent { get; }
         public string Location { get; }
-        public double Rating { get; }
+
+        public double Rating => _rating;
+        public int ReviewsCount => _reviewsCount;
 
         public string PricePerMinuteText => $"{PricePerMinute} ₽";
         public string BatteryText => $"Батарея / топливо: {BatteryPercent}%";
-        public string RatingText => Rating.ToString("0.0");
+        public string RatingText => _rating.ToString("0.0");
+        public string ReviewsCountText => $"Отзывы: {_reviewsCount}";
+
+        public void AddReview(int stars)
+        {
+            var boundedStars = Math.Max(1, Math.Min(5, stars));
+            _rating = ((_rating * _reviewsCount) + boundedStars) / (_reviewsCount + 1);
+            _reviewsCount += 1;
+            OnPropertyChanged(nameof(Rating));
+            OnPropertyChanged(nameof(ReviewsCount));
+            OnPropertyChanged(nameof(RatingText));
+            OnPropertyChanged(nameof(ReviewsCountText));
+        }
+
+        private void OnPropertyChanged(string propertyName)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
     }
 
     public class RelayCommand : ICommand

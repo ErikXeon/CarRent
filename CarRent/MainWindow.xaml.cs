@@ -1,25 +1,13 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
+using System.IO;
+using System.Windows;
 using System.Windows.Threading;
 
 namespace CarRent
-{
-   
+{  
     public partial class MainWindow : Window
     {
         public MainWindow()
@@ -37,23 +25,25 @@ namespace CarRent
         private DateTime? _rideStart;
         private decimal _total;
         private int _pendingReviewStars;
+        private RentalReviewContext _pendingReview;
+        private int _nextRentalId;
 
         public MainViewModel()
         {
             Cars = new ObservableCollection<CarViewModel>
             {
-                new CarViewModel("Tesla Model 3", "Электро", 14, 96, "2 мин пешком · ул. Победы, 8", 4.9, 120),
-                new CarViewModel("Volkswagen Polo", "Комфорт", 9, 62, "5 мин пешком · пр-т Мира, 15", 4.7, 88),
-                new CarViewModel("Haval Jolion", "Кроссовер", 12, 74, "3 мин пешком · ТЦ Центральный", 4.8, 57),
-                new CarViewModel("Kia Rio X", "Город", 8, 58, "6 мин пешком · ул. Ленина, 42", 4.6, 102),
-                new CarViewModel("BMW i3", "Премиум", 17, 88, "4 мин пешком · Набережная", 4.9, 41),
-                new CarViewModel("Geely Coolray", "Спорт", 11, 67, "7 мин пешком · ул. Гагарина, 2", 4.5, 64),
-                new CarViewModel("Hyundai Solaris", "Город", 8, 71, "5 мин пешком · БЦ Альфа", 4.6, 95),
-                new CarViewModel("Nissan Qashqai", "Кроссовер", 12, 65, "8 мин пешком · ул. Советская, 4", 4.7, 53),
-                new CarViewModel("Audi A3", "Премиум", 16, 81, "4 мин пешком · Парк Сити", 4.8, 37),
-                new CarViewModel("Renault Kaptur", "Семейный", 10, 69, "6 мин пешком · ул. Молодежная, 17", 4.5, 72),
-                new CarViewModel("Exeed LX", "Бизнес", 15, 76, "9 мин пешком · ЖК Панорама", 4.7, 48),
-                new CarViewModel("Chery Tiggo 7", "Кроссовер", 11, 73, "3 мин пешком · ул. Университетская", 4.6, 60)
+                new CarViewModel("Tesla Model 3", "Электро", 14, 96, "2 мин пешком · ул. Победы, 8", 4.9, 120, "tesla_model_3.jpg"),
+                new CarViewModel("Volkswagen Polo", "Комфорт", 9, 62, "5 мин пешком · пр-т Мира, 15", 4.7, 88, "volkswagen_polo.jpg"),
+                new CarViewModel("Haval Jolion", "Кроссовер", 12, 74, "3 мин пешком · ТЦ Центральный", 4.8, 57, "haval_jolion.jpg"),
+                new CarViewModel("Kia Rio X", "Город", 8, 58, "6 мин пешком · ул. Ленина, 42", 4.6, 102, "kia_rio_x.jpg"),
+                new CarViewModel("BMW i3", "Премиум", 17, 88, "4 мин пешком · Набережная", 4.9, 41, "bmw_i3.jpg"),
+                new CarViewModel("Geely Coolray", "Спорт", 11, 67, "7 мин пешком · ул. Гагарина, 2", 4.5, 64, "geely_coolray.jpg"),
+                new CarViewModel("Hyundai Solaris", "Город", 8, 71, "5 мин пешком · БЦ Альфа", 4.6, 95, "hyundai_solaris.jpg"),
+                new CarViewModel("Nissan Qashqai", "Кроссовер", 12, 65, "8 мин пешком · ул. Советская, 4", 4.7, 53, "nissan_qashqai.jpg"),
+                new CarViewModel("Audi A3", "Премиум", 16, 81, "4 мин пешком · Парк Сити", 4.8, 37, "audi_a3.jpg"),
+                new CarViewModel("Renault Kaptur", "Семейный", 10, 69, "6 мин пешком · ул. Молодежная, 17", 4.5, 72, "renault_kaptur.jpg"),
+                new CarViewModel("Exeed LX", "Бизнес", 15, 76, "9 мин пешком · ЖК Панорама", 4.7, 48, "exeed_lx.jpg"),
+                new CarViewModel("Chery Tiggo 7", "Кроссовер", 11, 73, "3 мин пешком · ул. Университетская", 4.6, 60, "chery_tiggo_7.jpg")
             };
 
             SelectCarCommand = new RelayCommand(SelectCar);
@@ -69,6 +59,7 @@ namespace CarRent
 
             _state = TripState.NoSelection;
             _pendingReviewStars = 5;
+            _nextRentalId = 1;
             ReceiptText = "Выбери машину, чтобы начать аренду.";
             RaiseAll();
         }
@@ -140,6 +131,20 @@ namespace CarRent
             : $"Тариф {_selectedCar.PricePerMinute} ₽/мин.";
 
         public string PendingReviewText => $"Выбрано: {_pendingReviewStars} из 5 звезд";
+
+        public string ReviewHint => _pendingReview == null
+            ? "Отзыв доступен после завершения аренды выбранной машины."
+            : _pendingReview.IsSubmitted
+                ? "За последнюю завершенную аренду отзыв уже отправлен."
+                : $"Доступен отзыв за аренду №{_pendingReview.RentalId}: {_pendingReview.Car.Name}.";
+
+        public string SelectedCarImagePath => _selectedCar == null
+            ? null
+            : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, _selectedCar.ImageRelativePath);
+
+        public string SelectedCarImageStatusText => _selectedCar == null
+            ? "Выберите машину, чтобы увидеть фото."
+            : $"Фото: {_selectedCar.ImageFileName} (папка Assets/CarPhotos).";
 
         public string ReceiptText { get; private set; }
 
@@ -238,6 +243,7 @@ namespace CarRent
             }
 
             _state = TripState.Riding;
+            _pendingReview = null;
             _rideStart = DateTime.Now;
             _total = 0;
             _timer.Start();
@@ -266,6 +272,7 @@ namespace CarRent
             var minutes = Math.Max(1, (int)Math.Ceiling(duration.TotalMinutes));
             _total = minutes * _selectedCar.PricePerMinute;
             _state = TripState.Finished;
+            _pendingReview = new RentalReviewContext(_nextRentalId++, _selectedCar);
 
             ReceiptText =
                 "Счет сформирован и оплачен:\n" +
@@ -273,7 +280,7 @@ namespace CarRent
                 $"• Длительность: {duration:hh\\:mm\\:ss} ({minutes} мин)\n" +
                 $"• Тариф: {_selectedCar.PricePerMinute} ₽/мин\n" +
                 $"• Итого: {_total} ₽\n\n" +
-                "Поездка закрыта. Теперь можно выбрать следующую машину.";
+                "Поездка закрыта. Теперь можно оставить 1 отзыв за эту аренду.";
 
             RaiseAll();
         }
@@ -303,9 +310,38 @@ namespace CarRent
                 return;
             }
 
+            if (_pendingReview == null)
+            {
+                ReceiptText = "Отзыв можно оставить только после завершенной аренды.";
+                RaiseAll();
+                return;
+            }
+
+            if (_pendingReview.IsSubmitted)
+            {
+                ReceiptText = "За эту аренду отзыв уже отправлен. Новый отзыв будет доступен после следующей завершенной аренды.";
+                RaiseAll();
+                return;
+            }
+
+            if (!ReferenceEquals(_pendingReview.Car, _selectedCar))
+            {
+                ReceiptText = $"Отзыв можно оставить только для машины из завершенной аренды: {_pendingReview.Car.Name}.";
+                RaiseAll();
+                return;
+            }
+
+            if (_state != TripState.Finished)
+            {
+                ReceiptText = "Отзыв доступен только после завершения аренды.";
+                RaiseAll();
+                return;
+            }
+
+
             _selectedCar.AddReview(_pendingReviewStars);
-            ReceiptText = $"Отзыв отправлен: {_pendingReviewStars}★. Новый рейтинг {_selectedCar.RatingText}.";
-            RaiseAll();
+            _pendingReview.MarkSubmitted();
+            ReceiptText = $"Отзыв за аренду №{_pendingReview.RentalId} отправлен: {_pendingReviewStars}★. Новый рейтинг {_selectedCar.RatingText}."; RaiseAll();
         }
 
         private void OnTick()
@@ -338,6 +374,9 @@ namespace CarRent
             OnPropertyChanged(nameof(RunningTotalText));
             OnPropertyChanged(nameof(BillingHint));
             OnPropertyChanged(nameof(PendingReviewText));
+            OnPropertyChanged(nameof(ReviewHint));
+            OnPropertyChanged(nameof(SelectedCarImagePath));
+            OnPropertyChanged(nameof(SelectedCarImageStatusText));
             OnPropertyChanged(nameof(ReceiptText));
             OnPropertyChanged(nameof(HeaderStatus));
             CommandManager.InvalidateRequerySuggested();
@@ -354,7 +393,7 @@ namespace CarRent
         private double _rating;
         private int _reviewsCount;
 
-        public CarViewModel(string name, string classTag, decimal pricePerMinute, int batteryPercent, string location, double rating, int reviewsCount)
+        public CarViewModel(string name, string classTag, decimal pricePerMinute, int batteryPercent, string location, double rating, int reviewsCount, string imageFileName)
         {
             Name = name;
             ClassTag = classTag;
@@ -363,6 +402,7 @@ namespace CarRent
             Location = location;
             _rating = rating;
             _reviewsCount = reviewsCount;
+            ImageFileName = imageFileName;
         }
 
         public event PropertyChangedEventHandler PropertyChanged;
@@ -372,6 +412,8 @@ namespace CarRent
         public decimal PricePerMinute { get; }
         public int BatteryPercent { get; }
         public string Location { get; }
+        public string ImageFileName { get; }
+        public string ImageRelativePath => Path.Combine("Assets", "CarPhotos", ImageFileName);
 
         public double Rating => _rating;
         public int ReviewsCount => _reviewsCount;
@@ -392,9 +434,46 @@ namespace CarRent
             OnPropertyChanged(nameof(ReviewsCountText));
         }
 
+        public class RentalReviewContext
+        {
+            public RentalReviewContext(int rentalId, CarViewModel car)
+            {
+                RentalId = rentalId;
+                Car = car;
+            }
+
+            public int RentalId { get; }
+            public CarViewModel Car { get; }
+            public bool IsSubmitted { get; private set; }
+
+            public void MarkSubmitted()
+            {
+                IsSubmitted = true;
+            }
+        }
+
+
         private void OnPropertyChanged(string propertyName)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+    }
+
+    public class RentalReviewContext
+    {
+        public RentalReviewContext(int rentalId, CarViewModel car)
+        {
+            RentalId = rentalId;
+            Car = car;
+        }
+
+        public int RentalId { get; }
+        public CarViewModel Car { get; }
+        public bool IsSubmitted { get; private set; }
+
+        public void MarkSubmitted()
+        {
+            IsSubmitted = true;
         }
     }
 

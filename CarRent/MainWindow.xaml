@@ -131,6 +131,13 @@
                     <TextBlock Text="Панель поездки" Foreground="#1E3463" FontSize="24" FontWeight="Bold" />
                     <TextBlock Text="{Binding SelectedCarName}" Foreground="#3F5D94" FontSize="14" Margin="0,6,0,14" TextWrapping="Wrap"/>
 
+                    <Border Background="#EAF1FF" Padding="10" CornerRadius="10" Margin="0,0,0,10" BorderBrush="#BFD0EE" BorderThickness="1">
+                        <StackPanel>
+                            <Image Source="{Binding SelectedCarImagePath}" Height="150" Stretch="UniformToFill" />
+                            <TextBlock Text="{Binding SelectedCarImageStatusText}" Foreground="#4869A4" FontSize="12" Margin="0,8,0,0" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+                    
                     <Border Background="#DDEAFF" Padding="12" CornerRadius="10" Margin="0,0,0,10">
                         <StackPanel>
                             <TextBlock Text="Текущий этап" Foreground="#4869A4" FontSize="12" />
@@ -163,6 +170,7 @@
                                 <Button Content="★5" Width="40" Margin="0,0,6,0" Padding="0" Height="30" Command="{Binding SetReviewStarsCommand}" CommandParameter="5" Background="#2E62C6" />
                             </StackPanel>
                             <TextBlock Text="{Binding PendingReviewText}" Foreground="#3F5D94" FontSize="12" Margin="0,0,0,6" />
+                            <TextBlock Text="{Binding ReviewHint}" Foreground="#3F5D94" FontSize="12" Margin="0,0,0,6" TextWrapping="Wrap" />
                             <Button Content="Отправить отзыв" Command="{Binding SubmitReviewCommand}" Background="#2E62C6" />
                         </StackPanel>
                     </Border>

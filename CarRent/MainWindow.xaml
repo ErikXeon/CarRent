@@ -63,9 +63,9 @@
 
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="2.1*" />
-                <ColumnDefinition Width="0.95*" />
-                <ColumnDefinition Width="1.05*" />
+                <ColumnDefinition Width="2.4*" />
+                <ColumnDefinition Width="0.82*" />
+                <ColumnDefinition Width="0.9*" />
             </Grid.ColumnDefinitions>
 
             <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" Padding="0,0,14,0">
@@ -77,9 +77,9 @@
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Border Width="320"
-                                    Margin="0,0,14,14"
-                                    Padding="14"
+                            <Border Width="270"
+                                    Margin="0,0,12,12"
+                                    Padding="12"
                                     Background="#F3F7FF"
                                     BorderBrush="#BFD0EE"
                                     BorderThickness="1"
@@ -88,12 +88,9 @@
                                     <Border Background="#DDEAFF" CornerRadius="10" Padding="8" HorizontalAlignment="Left">
                                         <TextBlock Text="{Binding ClassTag}" Foreground="#2F4B7E" FontSize="12" FontWeight="SemiBold" />
                                     </Border>
-                                    <TextBlock Text="{Binding Name}" Foreground="#1A335F" FontWeight="Bold" FontSize="22" Margin="0,14,0,2" />
+                                    <TextBlock Text="{Binding Name}" Foreground="#1A335F" FontWeight="Bold" FontSize="20" Margin="0,12,0,2" />
                                     <Border Background="#FFFFFF" Padding="8" CornerRadius="10" Margin="0,4,0,8" BorderBrush="#C6D8F7" BorderThickness="1">
-                                        <Image Source="{Binding ImagePath}" Height="120" Stretch="Uniform" />
-                                    </Border>
-                                    <Border Background="#FFFFFF" Padding="8" CornerRadius="10" Margin="0,4,0,8" BorderBrush="#C6D8F7" BorderThickness="1">
-                                        <Image Source="{Binding ImagePath}" Width="160" Height="120" Stretch="UniformToFill" />
+                                        <Image Source="{Binding ImagePath}" Height="110" Stretch="Uniform" />
                                     </Border>
                                     <TextBlock Text="{Binding BatteryText}" Foreground="#3D5A8F" FontSize="13" />
                                     <TextBlock Text="{Binding Location}" Foreground="#4E699A" FontSize="13" Margin="0,2,0,10" />
@@ -106,13 +103,13 @@
                                         <Border Grid.Column="0" Background="#E8F0FF" CornerRadius="10" Padding="8" Margin="0,0,6,0">
                                             <StackPanel>
                                                 <TextBlock Text="Цена / мин" FontSize="12" Foreground="#4F6FA6" />
-                                                <TextBlock Text="{Binding PricePerMinuteText}" FontSize="20" FontWeight="Bold" Foreground="#1A335F" />
+                                                <TextBlock Text="{Binding PricePerMinuteText}" FontSize="18" FontWeight="Bold" Foreground="#1A335F" />
                                             </StackPanel>
                                         </Border>
                                         <Border Grid.Column="1" Background="#E8F0FF" CornerRadius="10" Padding="8" Margin="6,0,0,0">
                                             <StackPanel>
                                                 <TextBlock Text="Рейтинг" FontSize="12" Foreground="#4F6FA6" />
-                                                <TextBlock Text="{Binding RatingText}" FontSize="20" FontWeight="Bold" Foreground="#1A335F" />
+                                                <TextBlock Text="{Binding RatingText}" FontSize="18" FontWeight="Bold" Foreground="#1A335F" />
                                                 <TextBlock Text="{Binding ReviewsCountText}" FontSize="11" Foreground="#627FAF" />
                                             </StackPanel>
                                         </Border>
@@ -130,15 +127,15 @@
             </ScrollViewer>
 
             <Border Grid.Column="1"
-                    Padding="16"
+                    Padding="14"
                     CornerRadius="16"
                     Background="#EEF4FF"
                     BorderThickness="1"
                     BorderBrush="#BFD0EE"
                     Margin="0,0,14,0">
                 <StackPanel>
-                    <TextBlock Text="Фильтры" Foreground="#1E3463" FontSize="22" FontWeight="Bold" />
-                    <TextBlock Text="Подбери авто по цене, классу и рейтингу" Foreground="#4869A4" FontSize="12" Margin="0,4,0,14" TextWrapping="Wrap" />
+                    <TextBlock Text="Фильтры" Foreground="#1E3463" FontSize="20" FontWeight="Bold" />
+                    <TextBlock Text="Подбери авто по цене, классу и рейтингу" Foreground="#4869A4" FontSize="11" Margin="0,4,0,12" TextWrapping="Wrap" />
 
                     <TextBlock Text="Класс" Foreground="#3F5D94" FontSize="12" Margin="0,0,0,6" />
                     <ComboBox ItemsSource="{Binding AvailableClasses}"
@@ -176,18 +173,18 @@
             </Border>
 
             <Border Grid.Column="2"
-                    Padding="18"
+                    Padding="14"
                     CornerRadius="16"
                     Background="#EEF4FF"
                     BorderThickness="1"
                     BorderBrush="#BFD0EE">
                 <StackPanel>
-                    <TextBlock Text="Панель поездки" Foreground="#1E3463" FontSize="24" FontWeight="Bold" />
-                    <TextBlock Text="{Binding SelectedCarName}" Foreground="#3F5D94" FontSize="14" Margin="0,6,0,14" TextWrapping="Wrap"/>
+                    <TextBlock Text="Панель поездки" Foreground="#1E3463" FontSize="21" FontWeight="Bold" />
+                    <TextBlock Text="{Binding SelectedCarName}" Foreground="#3F5D94" FontSize="13" Margin="0,6,0,12" TextWrapping="Wrap"/>
 
                     <Border Background="#FFFFFF" Padding="10" CornerRadius="10" Margin="0,0,0,10" BorderBrush="#BFD0EE" BorderThickness="1">
                         <StackPanel>
-                            <Image Source="{Binding SelectedCarImagePath}" Width="240" Height="180" Stretch="Uniform" />
+                            <Image Source="{Binding SelectedCarImagePath}" Width="210" Height="150" Stretch="Uniform" />
                             <TextBlock Text="{Binding SelectedCarImageStatusText}" Foreground="#4869A4" FontSize="12" Margin="0,8,0,0" TextWrapping="Wrap" />
                         </StackPanel>
                     </Border>

@@ -81,6 +81,7 @@ namespace CarRent
             _pendingReviewStars = 5;
             _nextRentalId = 1;
             ReceiptText = "Выбери машину, чтобы начать аренду.";
+            RefreshFilters();
             RaiseAll();
         }
 
